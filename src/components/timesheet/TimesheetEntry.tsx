@@ -1,22 +1,34 @@
 import React, { useState } from 'react';
 import { Plus, Save, Clock, Calendar, Award, Zap } from 'lucide-react';
-import { Project, Task, TimesheetEntry, PublicHoliday } from '../../types';
-import { mockProjects, mockTasks, mockPublicHolidays } from '../../data/mockData';
+import { Project, Task, TimesheetEntry, PublicHoliday, User } from '../../types';
+import { createTimesheetEntry } from '../../data/supabaseQueries';
+import { useAuth } from '../../hooks/useAuth';
 
 interface TimesheetEntryProps {
   entries: TimesheetEntry[];
-  onAddEntry: (entry: Omit<TimesheetEntry, 'id'>) => void;
+  projects: Project[];
+  tasks: Task[];
+  holidays: PublicHoliday[];
+  onAddEntry: (entry: TimesheetEntry) => void;
 }
 
-const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAddEntry }) => {
+const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ 
+  entries, 
+  projects, 
+  tasks, 
+  holidays, 
+  onAddEntry 
+}) => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [hours, setHours] = useState('');
   const [description, setDescription] = useState('');
   const [showAchievement, setShowAchievement] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const availableTasks = mockTasks.filter(task => task.projectId === selectedProject);
+  const availableTasks = tasks.filter(task => task.project_id === selectedProject);
 
   // Check if date is weekend
   const isWeekend = (date: string) => {
@@ -26,7 +38,7 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
 
   // Check if date is public holiday
   const isPublicHoliday = (date: string, userLocation: 'location_a' | 'location_b') => {
-    return mockPublicHolidays.some(holiday => 
+    return holidays.some(holiday => 
       holiday.date === date && 
       (holiday.location === 'both' || holiday.location === userLocation)
     );
@@ -34,84 +46,98 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
 
   // Get holiday name if it's a holiday
   const getHolidayName = (date: string, userLocation: 'location_a' | 'location_b') => {
-    const holiday = mockPublicHolidays.find(holiday => 
+    const holiday = holidays.find(holiday => 
       holiday.date === date && 
       (holiday.location === 'both' || holiday.location === userLocation)
     );
     return holiday?.name;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedProject || !selectedTask || !hours || !description) {
+    if (!selectedProject || !selectedTask || !hours || !description || !user) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const hoursNum = parseFloat(hours);
-    const userLocation = 'location_a'; // This should come from user context
-    const isHolidayWork = isPublicHoliday(selectedDate, userLocation);
-    const isWeekendWork = isWeekend(selectedDate);
+    setLoading(true);
     
-    let overtimeHours = 0;
-    let autoOvertimeReason = '';
-    let isOvertime = false;
+    try {
+      const hoursNum = parseFloat(hours);
+      const userLocation = user.location;
+      const isHolidayWork = isPublicHoliday(selectedDate, userLocation);
+      const isWeekendWork = isWeekend(selectedDate);
+      
+      let overtimeHours = 0;
+      let autoOvertimeReason = '';
+      let isOvertime = false;
 
-    // Automatic overtime detection
-    if (isHolidayWork) {
-      // All hours on holidays are overtime
-      overtimeHours = hoursNum;
-      isOvertime = true;
-      autoOvertimeReason = `Public holiday work (${getHolidayName(selectedDate, userLocation)}) - all hours counted as overtime`;
-    } else if (isWeekendWork) {
-      // All hours on weekends are overtime
-      overtimeHours = hoursNum;
-      isOvertime = true;
-      autoOvertimeReason = 'Weekend work - all hours counted as overtime';
-    } else if (hoursNum > 8) {
-      // Regular day with excess hours
-      overtimeHours = hoursNum - 8;
-      isOvertime = true;
-      autoOvertimeReason = `Excess hours beyond standard 8-hour workday`;
+      // Automatic overtime detection
+      if (isHolidayWork) {
+        // All hours on holidays are overtime
+        overtimeHours = hoursNum;
+        isOvertime = true;
+        autoOvertimeReason = `Public holiday work (${getHolidayName(selectedDate, userLocation)}) - all hours counted as overtime`;
+      } else if (isWeekendWork) {
+        // All hours on weekends are overtime
+        overtimeHours = hoursNum;
+        isOvertime = true;
+        autoOvertimeReason = 'Weekend work - all hours counted as overtime';
+      } else if (hoursNum > 8) {
+        // Regular day with excess hours
+        overtimeHours = hoursNum - 8;
+        isOvertime = true;
+        autoOvertimeReason = `Excess hours beyond standard 8-hour workday`;
+      }
+
+      const selectedTaskData = tasks.find(t => t.id === selectedTask);
+      
+      const newEntry = await createTimesheetEntry({
+        user_id: user.id,
+        date: selectedDate,
+        project_id: selectedProject,
+        task_id: selectedTask,
+        hours_worked: hoursNum,
+        description,
+        status: 'draft',
+        is_overtime: isOvertime,
+        overtime_hours: overtimeHours > 0 ? overtimeHours : undefined,
+        submitted_at: new Date().toISOString(),
+        is_billable: selectedTaskData?.is_billable || false,
+        task_type: selectedTaskData?.task_type || 'project',
+        is_holiday: isHolidayWork,
+        is_weekend: isWeekendWork,
+        auto_overtime_reason: autoOvertimeReason || undefined,
+        created_by: user.id
+      });
+
+      onAddEntry(newEntry);
+
+      // Show achievement notification
+      setShowAchievement(true);
+      setTimeout(() => setShowAchievement(false), 3000);
+
+      // Reset form
+      setSelectedProject('');
+      setSelectedTask('');
+      setHours('');
+      setDescription('');
+    } catch (error) {
+      console.error('Error creating timesheet entry:', error);
+      alert('Failed to save timesheet entry. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    onAddEntry({
-      userId: '1', // Current user ID
-      date: selectedDate,
-      projectId: selectedProject,
-      taskId: selectedTask,
-      hoursWorked: hoursNum,
-      description,
-      status: 'draft',
-      isOvertime,
-      overtimeHours: overtimeHours > 0 ? overtimeHours : undefined,
-      submittedAt: new Date().toISOString(),
-      isBillable: mockTasks.find(t => t.id === selectedTask)?.isBillable || false,
-      taskType: mockTasks.find(t => t.id === selectedTask)?.taskType || 'project',
-      isHoliday: isHolidayWork,
-      isWeekend: isWeekendWork,
-      autoOvertimeReason: autoOvertimeReason || undefined
-    });
-
-    // Show achievement notification
-    setShowAchievement(true);
-    setTimeout(() => setShowAchievement(false), 3000);
-
-    // Reset form
-    setSelectedProject('');
-    setSelectedTask('');
-    setHours('');
-    setDescription('');
   };
 
   const todayEntries = entries.filter(entry => entry.date === selectedDate);
-  const totalHours = todayEntries.reduce((sum, entry) => sum + entry.hoursWorked, 0);
-  const totalOvertimeHours = todayEntries.reduce((sum, entry) => sum + (entry.overtimeHours || 0), 0);
+  const totalHours = todayEntries.reduce((sum, entry) => sum + entry.hours_worked, 0);
+  const totalOvertimeHours = todayEntries.reduce((sum, entry) => sum + (entry.overtime_hours || 0), 0);
 
   const selectedDateIsWeekend = isWeekend(selectedDate);
-  const selectedDateIsHoliday = isPublicHoliday(selectedDate, 'location_a');
-  const holidayName = getHolidayName(selectedDate, 'location_a');
+  const selectedDateIsHoliday = isPublicHoliday(selectedDate, user?.location || 'location_a');
+  const holidayName = getHolidayName(selectedDate, user?.location || 'location_a');
 
   return (
     <div className="space-y-6">
@@ -216,7 +242,7 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
                 required
               >
                 <option value="">Select a project</option>
-                {mockProjects.map((project) => (
+                {projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name}
                   </option>
@@ -267,10 +293,11 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
           <div className="flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
             >
               <Save className="w-4 h-4 mr-2" />
-              Save Entry
+              {loading ? 'Saving...' : 'Save Entry'}
             </button>
           </div>
         </form>
@@ -299,8 +326,8 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
         ) : (
           <div className="space-y-3">
             {todayEntries.map((entry) => {
-              const project = mockProjects.find(p => p.id === entry.projectId);
-              const task = mockTasks.find(t => t.id === entry.taskId);
+              const project = projects.find(p => p.id === entry.project_id);
+              const task = tasks.find(t => t.id === entry.task_id);
               
               return (
                 <div key={entry.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -309,23 +336,23 @@ const TimesheetEntryComponent: React.FC<TimesheetEntryProps> = ({ entries, onAdd
                       <span className="font-medium text-gray-900">{project?.name}</span>
                       <span className="text-gray-500">•</span>
                       <span className="text-gray-700">{task?.name}</span>
-                      {entry.isBillable && (
+                      {entry.is_billable && (
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                           Billable
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{entry.description}</p>
-                    {entry.autoOvertimeReason && (
+                    {entry.auto_overtime_reason && (
                       <p className="text-xs text-amber-600 mt-1 italic">
-                        {entry.autoOvertimeReason}
+                        {entry.auto_overtime_reason}
                       </p>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-gray-900">{entry.hoursWorked}h</div>
-                    {entry.isOvertime && entry.overtimeHours && (
-                      <div className="text-xs text-amber-600">+{entry.overtimeHours}h OT</div>
+                    <div className="font-semibold text-gray-900">{entry.hours_worked}h</div>
+                    {entry.is_overtime && entry.overtime_hours && (
+                      <div className="text-xs text-amber-600">+{entry.overtime_hours}h OT</div>
                     )}
                   </div>
                 </div>
