@@ -138,7 +138,7 @@ export interface OvertimeEntry {
   reason: 'weekend' | 'holiday' | 'excess_hours';
 }
 
-export interface OvertimeAttachment {
+interface OvertimeAttachment {
   id: string;
   fileName: string;
   fileType: 'pdf' | 'image';
@@ -166,7 +166,7 @@ export interface LeaveRequest {
   attachments?: LeaveAttachment[];
 }
 
-export interface LeaveAttachment {
+interface LeaveAttachment {
   id: string;
   fileName: string;
   fileType: 'pdf' | 'image';
@@ -188,7 +188,7 @@ export interface ITTicket {
   attachments?: ITTicketAttachment[];
 }
 
-export interface ITTicketAttachment {
+interface ITTicketAttachment {
   id: string;
   fileName: string;
   fileType: 'pdf' | 'image' | 'document';

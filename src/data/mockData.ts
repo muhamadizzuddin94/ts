@@ -15,7 +15,7 @@ import {
   OvertimeEntry
 } from '../types';
 
-export const mockBadges: Badge[] = [
+const mockBadges: Badge[] = [
   {
     id: 'early-bird',
     name: 'Early Bird',
@@ -416,7 +416,7 @@ export const mockPublicHolidays: PublicHoliday[] = [
   }
 ];
 
-export const mockOvertimeEntries: OvertimeEntry[] = [
+const mockOvertimeEntries: OvertimeEntry[] = [
   {
     id: '1',
     date: '2024-01-16',
