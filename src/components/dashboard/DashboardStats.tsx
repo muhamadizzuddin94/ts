@@ -10,11 +10,11 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
   const statCards = [
     {
       title: 'Hours This Month',
-      value: `${stats.actualHours.toFixed(1)}h`,
-      subtitle: `of ${stats.expectedHours}h expected`,
+      value: `${stats.actual_hours.toFixed(1)}h`,
+      subtitle: `of ${stats.expected_hours}h expected`,
       icon: Clock,
       color: 'blue',
-      progress: (stats.actualHours / stats.expectedHours) * 100,
+      progress: (stats.actual_hours / stats.expected_hours) * 100,
     },
     {
       title: 'Efficiency',
@@ -26,17 +26,17 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
     },
     {
       title: 'Completed Tasks',
-      value: stats.completedTasks,
+      value: stats.completed_tasks,
       subtitle: 'this month',
       icon: CheckCircle,
       color: 'green',
     },
     {
       title: 'Overtime Hours',
-      value: `${stats.overtimeHours.toFixed(1)}h`,
+      value: `${stats.overtime_hours.toFixed(1)}h`,
       subtitle: 'this month',
       icon: AlertCircle,
-      color: stats.overtimeHours > 20 ? 'red' : 'blue',
+      color: stats.overtime_hours > 20 ? 'red' : 'blue',
     },
   ];
 
