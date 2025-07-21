@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import { useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
-import { 
-  getProjects, 
-  getTasks, 
-  getPublicHolidays, 
-  getTimesheetEntries,
-  getUserStatistics 
-} from './data/supabaseQueries';
-import { Project, Task, PublicHoliday, TimesheetEntry, Statistics } from './types';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import DashboardStats from './components/dashboard/DashboardStats';
@@ -28,60 +19,35 @@ import ProjectAssignmentPage from './components/project/ProjectAssignmentPage';
 import TaskManagementPage from './components/task/TaskManagementPage';
 import ApprovalsPage from './components/approvals/ApprovalsPage';
 import TeamTasksKanban from './components/task/TeamTasksKanban';
+import { TimesheetEntry as TimesheetEntryType, Statistics } from './types';
+import { mockTimesheetEntries } from './data/mockData';
 
 function App() {
   const { user, loading, logout, switchRole } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [timesheetEntries, setTimesheetEntries] = useState<TimesheetEntry[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
-  const [stats, setStats] = useState<Statistics | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [timesheetEntries, setTimesheetEntries] = useState<TimesheetEntryType[]>(mockTimesheetEntries);
 
-  // Load data when user is available
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  const loadData = async () => {
-    if (!user) return;
-    
-    setDataLoading(true);
-    try {
-      const [
-        projectsData,
-        tasksData,
-        holidaysData,
-        entriesData,
-        statsData
-      ] = await Promise.all([
-        getProjects(),
-        getTasks(),
-        getPublicHolidays(),
-        getTimesheetEntries(user.id),
-        getUserStatistics(user.id)
-      ]);
-
-      setProjects(projectsData);
-      setTasks(tasksData);
-      setHolidays(holidaysData);
-      setTimesheetEntries(entriesData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setDataLoading(false);
-    }
+  const mockStats: Statistics = {
+    expectedHours: 160,
+    actualHours: 142.5,
+    overtimeHours: 18.0,
+    efficiency: 89.1,
+    completedTasks: 12,
+    activeProjects: 3,
+    billableHours: 120.5,
+    nonBillableHours: 22.0,
+    leaveHours: 16.0,
   };
 
-  const handleAddTimesheetEntry = (entry: TimesheetEntry) => {
-    setTimesheetEntries([...timesheetEntries, entry]);
+  const handleAddTimesheetEntry = (entry: Omit<TimesheetEntryType, 'id'>) => {
+    const newEntry: TimesheetEntryType = {
+      ...entry,
+      id: Date.now().toString(),
+    };
+    setTimesheetEntries([...timesheetEntries, newEntry]);
   };
 
-  if (loading || dataLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -122,7 +88,6 @@ function App() {
               </div>
             </div>
             <DashboardStats stats={mockStats} />
-            {stats && <DashboardStats stats={stats} />}
           </div>
         );
       
@@ -133,9 +98,6 @@ function App() {
         return (
           <TimesheetEntry 
             entries={timesheetEntries} 
-            projects={projects}
-            tasks={tasks}
-            holidays={holidays}
             onAddEntry={handleAddTimesheetEntry}
           />
         );

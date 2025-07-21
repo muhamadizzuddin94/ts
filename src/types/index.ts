@@ -2,23 +2,21 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'employee' | 'manager' | 'hr' | 'finance' | 'management' | 'it_admin' | 'production_supervisor';
+  role: 'employee' | 'manager' | 'hr' | 'finance' | 'management' | 'it_admin';
   department: string;
   location: 'location_a' | 'location_b';
-  manager_id?: string;
-  hod_id?: string;
-  annual_leave_balance: number;
-  medical_leave_balance: number;
-  unpaid_leave_balance: number;
-  time_off_balance: number;
-  total_points: number;
+  managerId?: string;
+  hodId?: string;
+  annualLeaveBalance: number;
+  medicalLeaveBalance: number;
+  unpaidLeaveBalance: number;
+  timeOffBalance: number;
+  // Gamification fields
+  totalPoints: number;
   level: number;
+  badges: Badge[];
   streak: number;
-  last_activity_date?: string;
-  created_at: string;
-  updated_at: string;
-  // Computed fields for UI
-  badges?: Badge[];
+  lastActivityDate?: string;
 }
 
 export interface Badge {
@@ -26,38 +24,29 @@ export interface Badge {
   name: string;
   description: string;
   icon: string;
+  earnedAt: string;
   category: 'productivity' | 'consistency' | 'quality' | 'collaboration' | 'milestone';
-  created_at: string;
-  earned_at?: string; // From user_badges join
-}
-
-export interface UserBadge {
-  id: string;
-  user_id: string;
-  badge_id: string;
-  earned_at: string;
-  badge?: Badge;
 }
 
 export interface Achievement {
   id: string;
-  user_id: string;
+  userId: string;
   type: 'task_completed' | 'streak_milestone' | 'overtime_hero' | 'early_bird' | 'quality_work' | 'team_player';
   title: string;
   description: string;
   points: number;
-  earned_at: string;
+  earnedAt: string;
 }
 
 export interface Leaderboard {
-  user_id: string;
-  user_name: string;
+  userId: string;
+  userName: string;
   department: string;
-  total_points: number;
+  totalPoints: number;
   level: number;
   rank: number;
-  weekly_points: number;
-  monthly_points: number;
+  weeklyPoints: number;
+  monthlyPoints: number;
 }
 
 export interface Project {
@@ -65,74 +54,48 @@ export interface Project {
   name: string;
   department: string;
   status: 'active' | 'completed' | 'on_hold';
-  start_date: string;
-  end_date?: string;
-  created_by: string;
-  is_billable: boolean;
-  created_at: string;
-  updated_at: string;
-  updated_by?: string;
-  // Computed fields
-  assigned_users?: string[];
-}
-
-export interface ProjectAssignment {
-  project_id: string;
-  user_id: string;
-  assigned_at: string;
-  assigned_by?: string;
+  startDate: string;
+  endDate?: string;
+  createdBy: string;
+  assignedUsers: string[];
+  isBillable: boolean;
 }
 
 export interface Task {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
   description?: string;
-  estimated_hours?: number;
-  is_billable: boolean;
-  task_type: 'project' | 'annual_leave' | 'medical_leave' | 'unpaid_leave' | 'time_off';
-  created_by: string;
-  assigned_by?: string;
-  due_date?: string;
+  estimatedHours?: number;
+  isBillable: boolean;
+  taskType: 'project' | 'annual_leave' | 'medical_leave' | 'unpaid_leave' | 'time_off';
+  createdBy: string;
+  assignedBy?: string;
+  dueDate?: string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   status?: 'not_started' | 'in_progress' | 'completed' | 'overdue';
-  created_at: string;
-  updated_at: string;
-  updated_by?: string;
-  // Computed fields
-  assigned_to?: string[];
-}
-
-export interface TaskAssignment {
-  task_id: string;
-  user_id: string;
-  assigned_at: string;
-  assigned_by?: string;
+  assignedTo?: string[];
 }
 
 export interface TimesheetEntry {
   id: string;
-  user_id: string;
+  userId: string;
   date: string;
-  project_id: string;
-  task_id: string;
-  hours_worked: number;
+  projectId: string;
+  taskId: string;
+  hoursWorked: number;
   description: string;
   status: 'draft' | 'submitted' | 'approved';
-  is_overtime: boolean;
-  overtime_hours?: number;
-  submitted_at?: string;
-  approved_at?: string;
-  approved_by?: string;
-  is_billable: boolean;
-  task_type: string;
-  is_holiday?: boolean;
-  is_weekend?: boolean;
-  auto_overtime_reason?: string;
-  created_at: string;
-  created_by: string;
-  updated_by?: string;
-  updated_at: string;
+  isOvertime: boolean;
+  overtimeHours?: number;
+  submittedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  isBillable: boolean;
+  taskType: 'project' | 'annual_leave' | 'medical_leave' | 'unpaid_leave' | 'time_off';
+  isHoliday?: boolean;
+  isWeekend?: boolean;
+  autoOvertimeReason?: string;
 }
 
 export interface PublicHoliday {
@@ -141,187 +104,139 @@ export interface PublicHoliday {
   date: string;
   location: 'location_a' | 'location_b' | 'both';
   recurring: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface OvertimeRequest {
   id: string;
-  user_id: string;
-  period_start: string;
-  period_end: string;
-  period_type: 'first_half' | 'second_half';
+  userId: string;
+  period: string; // Format: "2024-H1" or "2024-H2"
+  periodType: 'first_half' | 'second_half';
   year: number;
-  total_overtime_hours: number;
+  totalOvertimeHours: number;
   status: 'pending' | 'approved_hod' | 'approved_finance' | 'approved_management' | 'rejected';
-  submitted_at: string;
-  hod_approved_at?: string;
-  hod_approved_by?: string;
-  finance_approved_at?: string;
-  finance_approved_by?: string;
-  management_approved_at?: string;
-  management_approved_by?: string;
-  rejected_at?: string;
-  rejected_by?: string;
-  rejection_reason?: string;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  updated_by?: string;
-  // Computed fields
-  period?: string; // For UI compatibility
+  submittedAt: string;
+  hodApprovedAt?: string;
+  hodApprovedBy?: string;
+  financeApprovedAt?: string;
+  financeApprovedBy?: string;
+  managementApprovedAt?: string;
+  managementApprovedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
   attachments?: OvertimeAttachment[];
-  overtime_entries?: OvertimeEntry[];
+  overtimeEntries: OvertimeEntry[];
 }
 
 export interface OvertimeEntry {
   id: string;
-  request_id: string;
   date: string;
-  project_name: string;
-  task_name: string;
+  projectName: string;
+  taskName: string;
   hours: number;
   description: string;
   reason: 'weekend' | 'holiday' | 'excess_hours';
-  created_at: string;
-  created_by: string;
-  updated_by?: string;
 }
 
 export interface OvertimeAttachment {
   id: string;
-  overtime_id: string;
-  file_name: string;
-  file_type: 'pdf' | 'image' | 'document';
-  file_url: string;
-  uploaded_at: string;
-  created_by: string;
-  updated_by?: string;
-  updated_at: string;
+  fileName: string;
+  fileType: 'pdf' | 'image';
+  fileUrl: string;
+  uploadedAt: string;
 }
 
 export interface LeaveRequest {
   id: string;
-  user_id: string;
-  leave_type: 'annual_leave' | 'medical_leave' | 'unpaid_leave' | 'time_off';
-  start_date: string;
-  end_date: string;
-  total_days: number;
+  userId: string;
+  leaveType: 'annual_leave' | 'medical_leave' | 'unpaid_leave' | 'time_off';
+  startDate: string;
+  endDate: string;
+  totalDays: number;
   reason: string;
   status: 'pending' | 'approved_hod' | 'approved_hr' | 'rejected';
-  submitted_at: string;
-  hod_approved_at?: string;
-  hod_approved_by?: string;
-  hr_approved_at?: string;
-  hr_approved_by?: string;
-  rejected_at?: string;
-  rejected_by?: string;
-  rejection_reason?: string;
-  created_at: string;
-  created_by: string;
-  updated_by?: string;
-  // Computed fields
+  submittedAt: string;
+  hodApprovedAt?: string;
+  hodApprovedBy?: string;
+  hrApprovedAt?: string;
+  hrApprovedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
   attachments?: LeaveAttachment[];
 }
 
 export interface LeaveAttachment {
   id: string;
-  leave_id: string;
-  file_name: string;
-  file_type: 'pdf' | 'image' | 'document';
-  file_url: string;
-  uploaded_at: string;
-  created_by: string;
-  updated_by?: string;
-  updated_at: string;
+  fileName: string;
+  fileType: 'pdf' | 'image';
+  fileUrl: string;
+  uploadedAt: string;
 }
 
 export interface ITTicket {
   id: string;
-  user_id: string;
+  userId: string;
   title: string;
   description: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   category: 'hardware' | 'software' | 'network' | 'access' | 'other';
-  submitted_at: string;
-  assigned_to?: string;
-  resolved_at?: string;
-  created_at: string;
-  created_by: string;
-  updated_by?: string;
-  // Computed fields
+  submittedAt: string;
+  assignedTo?: string;
+  resolvedAt?: string;
   attachments?: ITTicketAttachment[];
 }
 
 export interface ITTicketAttachment {
   id: string;
-  it_ticket_id: string;
-  file_name: string;
-  file_type: 'pdf' | 'image' | 'document';
-  file_url: string;
-  uploaded_at: string;
-  created_by: string;
-  updated_by?: string;
-  updated_at: string;
-}
-
-export interface Attachment {
-  id: string;
-  related_type: 'leave' | 'overtime' | 'it_ticket';
-  leave_id?: string;
-  overtime_id?: string;
-  it_ticket_id?: string;
-  file_name: string;
-  file_type: 'pdf' | 'image' | 'document';
-  file_url: string;
-  uploaded_at: string;
-  created_by: string;
-  updated_by?: string;
-  updated_at: string;
+  fileName: string;
+  fileType: 'pdf' | 'image' | 'document';
+  fileUrl: string;
+  uploadedAt: string;
 }
 
 export interface Statistics {
-  expected_hours: number;
-  actual_hours: number;
-  overtime_hours: number;
+  expectedHours: number;
+  actualHours: number;
+  overtimeHours: number;
   efficiency: number;
-  completed_tasks: number;
-  active_projects: number;
-  billable_hours: number;
-  non_billable_hours: number;
-  leave_hours: number;
+  completedTasks: number;
+  activeProjects: number;
+  billableHours: number;
+  nonBillableHours: number;
+  leaveHours: number;
 }
 
 export interface HourVariance {
-  user_id: string;
-  user_name: string;
+  userId: string;
+  userName: string;
   department: string;
-  expected_hours: number;
-  actual_hours: number;
+  expectedHours: number;
+  actualHours: number;
   variance: number;
-  variance_percentage: number;
+  variancePercentage: number;
   month: string;
 }
 
 export interface TaskVariance {
-  task_id: string;
-  task_name: string;
-  project_name: string;
-  estimated_hours: number;
-  actual_hours: number;
+  taskId: string;
+  taskName: string;
+  projectName: string;
+  estimatedHours: number;
+  actualHours: number;
   variance: number;
-  variance_percentage: number;
-  assigned_users: string[];
+  variancePercentage: number;
+  assignedUsers: string[];
 }
 
 export interface BatchUpdate {
   id: string;
-  user_id: string;
+  userId: string;
   date: string;
-  time_slot: 'morning' | 'afternoon' | 'full_day';
-  project_id: string;
-  task_id: string;
+  timeSlot: 'morning' | 'afternoon' | 'full_day';
+  projectId: string;
+  taskId: string;
   description: string;
-  created_at: string;
+  createdAt: string;
 }
